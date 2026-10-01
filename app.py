@@ -1,15 +1,8 @@
-st.markdown("""
-    <script>
-        document.documentElement.setAttribute('lang', 'es');
-        document.documentElement.setAttribute('class', 'notranslate');
-        document.documentElement.setAttribute('translate', 'no');
-    </script>
-""", unsafe_allow_html=True)
-
 import sqlite3
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 import folium
 from streamlit_folium import st_folium
@@ -18,17 +11,21 @@ from streamlit_js_eval import get_geolocation
 from database import conectar, init_db
 from geo_utils import validar_distancia
 
-# Inicialización
-init_db()
-if not os.path.exists("fotos_fichaje"):
-    os.makedirs("fotos_fichaje")
-
+# set_page_config debe ser el primer comando de Streamlit
 st.set_page_config(
     page_title="Control de Asistencia OSARE", 
     page_icon="📍", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+ZONA_CR = ZoneInfo("America/Costa_Rica")
+
+# Inicialización
+init_db()
+if not os.path.exists("fotos_fichaje"):
+    os.makedirs("fotos_fichaje")
 
 # --- INYECCIÓN DE ESTILOS CSS PARA OPTIMIZACIÓN MÓVIL Y UX ---
 st.markdown("""
@@ -88,7 +85,7 @@ if st.session_state.usuario_autenticado is None:
             usuario_sel = st.sidebar.selectbox("Selecciona tu cuenta:", df_empleados["email"].tolist())
             pass_ingresada = st.sidebar.text_input("Contraseña:", type="password")
 
-            if st.sidebar.button("Ingresar a Fichar", type="primary", use_container_width=True):
+            if st.sidebar.button("Ingresar a Fichar", type="primary", width="stretch"):
                 conn = conectar()
                 res = pd.read_sql_query("SELECT * FROM empleados WHERE email = ? AND password = ?", conn, params=(usuario_sel, pass_ingresada))
                 conn.close()
@@ -105,7 +102,7 @@ if st.session_state.usuario_autenticado is None:
         admin_email = st.sidebar.text_input("Correo Admin:")
         admin_pass = st.sidebar.text_input("Contraseña Admin:", type="password")
 
-        if st.sidebar.button("Acceder a Panel", type="primary", use_container_width=True):
+        if st.sidebar.button("Acceder a Panel", type="primary", width="stretch"):
             conn = conectar()
             res = pd.read_sql_query("SELECT * FROM empleados WHERE email = ? AND password = ? AND rol = 'Admin'", conn, params=(admin_email, admin_pass))
             conn.close()
@@ -127,7 +124,7 @@ rol_usuario = st.session_state.rol_usuario
 
 st.sidebar.success(f"👤 **{datos_user['nombre']}**\n\n🛡️ **Rol:** {rol_usuario}")
 
-if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
+if st.sidebar.button("🚪 Cerrar Sesión", width="stretch"):
     st.session_state.usuario_autenticado = None
     st.session_state.rol_usuario = None
     st.session_state.datos_user = None
@@ -161,7 +158,7 @@ if seccion == "📍 Marcar Fichaje":
     else:
         st.warning("⚠️ Permite el acceso a la ubicación en tu navegador/celular para continuar.")
 
-    if st.button("Confirmar Marcación", type="primary", use_container_width=True):
+    if st.button("Confirmar Marcación", type="primary", width="stretch"):
         if foto is None:
             st.error("Es obligatorio tomar la fotografía antes de fichar.")
         elif lat_actual is None or lon_actual is None:
@@ -192,14 +189,14 @@ if seccion == "📍 Marcar Fichaje":
                 radio_tolerancia_m=radio_permitido
             )
             
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(ZONA_CR).strftime("%Y%m%d_%H%M%S")
             nombre_foto = f"{usuario_sel}_{timestamp}.jpg"
             ruta_foto = os.path.join("fotos_fichaje", nombre_foto)
             
             with open(ruta_foto, "wb") as f:
                 f.write(foto.getbuffer())
             
-            fecha_hora_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            fecha_hora_str = datetime.now(ZONA_CR).strftime("%Y-%m-%d %H:%M:%S")
             
             conn = conectar()
             cursor = conn.cursor()
@@ -290,7 +287,7 @@ elif seccion == "📊 Dashboard Auditoría":
         st.subheader("Auditoría de Fichajes")
         st.dataframe(
             df_asistencia[["id", "nombre", "fecha_hora", "tipo", "Estado Zona", "latitud", "longitud"]], 
-            use_container_width=True
+            width="stretch"
         )
         
         st.divider()
@@ -356,7 +353,7 @@ elif seccion == "👥 Gestión de Sucursales y Empleados":
                 radio_m = st.number_input("Radio de tolerancia (Metros):", min_value=50, max_value=5000, value=200, step=50)
                 st.caption(f"📍 Coordenadas: `{st.session_state.lat_sucursal_nueva:.6f}, {st.session_state.lon_sucursal_nueva:.6f}`")
                 
-                btn_crear_suc = st.form_submit_button("Guardar Sucursal", type="primary", use_container_width=True)
+                btn_crear_suc = st.form_submit_button("Guardar Sucursal", type="primary", width="stretch")
                 
                 if btn_crear_suc:
                     if nombre_suc.strip():
@@ -381,7 +378,7 @@ elif seccion == "👥 Gestión de Sucursales y Empleados":
         df_suc = pd.read_sql_query("SELECT id, nombre, latitud, longitud, radio_m FROM sucursales", conn)
         conn.close()
         st.markdown("**Sucursales Fijas Registradas:**")
-        st.dataframe(df_suc, use_container_width=True)
+        st.dataframe(df_suc, width="stretch")
 
     # -------------------------------------------------------------
     # TAB 2: REGISTRAR EMPLEADO
@@ -404,7 +401,7 @@ elif seccion == "👥 Gestión de Sucursales y Empleados":
                 sucursal_seleccionada = st.selectbox("Seleccionar Sucursal asignada:", df_sucursales["nombre"].tolist())
                 nuevo_rol = st.selectbox("Rol:", ["Empleado", "Admin"])
                 
-                btn_guardar_emp = st.form_submit_button("Guardar Empleado", type="primary", use_container_width=True)
+                btn_guardar_emp = st.form_submit_button("Guardar Empleado", type="primary", width="stretch")
                 
                 if btn_guardar_emp:
                     if nuevo_email and nuevo_nombre and nueva_password:
@@ -432,4 +429,4 @@ elif seccion == "👥 Gestión de Sucursales y Empleados":
         df_emp = pd.read_sql_query("SELECT email, nombre, nombre_sucursal, lat_sucursal, lon_sucursal, rol FROM empleados", conn)
         conn.close()
         st.markdown("**Empleados Activos:**")
-        st.dataframe(df_emp, use_container_width=True)
+        st.dataframe(df_emp, width="stretch")

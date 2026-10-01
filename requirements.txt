@@ -3,3 +3,5 @@ pandas
 folium
 streamlit-folium
 streamlit-js-eval==0.1.5
+pyarrow<25
+tzdata
