@@ -1,3 +1,11 @@
+st.markdown("""
+    <script>
+        document.documentElement.setAttribute('lang', 'es');
+        document.documentElement.setAttribute('class', 'notranslate');
+        document.documentElement.setAttribute('translate', 'no');
+    </script>
+""", unsafe_allow_html=True)
+
 import sqlite3
 import streamlit as st
 import pandas as pd
