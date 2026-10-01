@@ -282,7 +282,7 @@ elif seccion == "📊 Dashboard Auditoría":
                 ).add_to(m_audit)
             
             # TAREA 2: Ajuste de dimensión del mapa para móviles
-            st_folium(m_audit, height=300, width="100%", key="mapa_audit", returned_objects=[])
+            st_folium(m_audit, height=300, width="100%", key="mapa_audit")
             
         st.subheader("Auditoría de Fichajes")
         st.dataframe(
@@ -337,7 +337,7 @@ elif seccion == "👥 Gestión de Sucursales y Empleados":
             ).add_to(m)
             
             # TAREA 2: Altura contenida para pantallas móviles
-            map_data = st_folium(m, height=280, width="100%", key="mapa_sedes", returned_objects=["last_clicked"])
+            map_data = st_folium(m, height=280, width="100%", key="mapa_sedes")
             
             if map_data and map_data.get("last_clicked"):
                 n_lat = map_data["last_clicked"]["lat"]
