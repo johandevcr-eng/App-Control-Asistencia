@@ -7,7 +7,7 @@ def init_db():
     conn = conectar()
     cursor = conn.cursor()
     
-    # 1. Tabla de Sucursales (con radio de tolerancia configurable)
+    # 1. Tabla de Sucursales
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sucursales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,7 +18,6 @@ def init_db():
         )
     ''')
     
-    # Insertar sucursal por defecto
     cursor.execute('''
         INSERT OR IGNORE INTO sucursales (nombre, latitud, longitud, radio_m)
         VALUES ('Sede OSARE', 9.850015, -83.904938, 200)
@@ -33,14 +32,28 @@ def init_db():
             lat_sucursal REAL NOT NULL,
             lon_sucursal REAL NOT NULL,
             nombre_sucursal TEXT,
-            rol TEXT CHECK(rol IN ('Admin', 'Empleado')) NOT NULL
+            rol TEXT CHECK(rol IN ('Admin', 'Empleado')) NOT NULL,
+            tipo_corte TEXT DEFAULT 'Quincenal',
+            tipo_turno TEXT DEFAULT 'Diurno (8h)',
+            marcas_diarias INTEGER DEFAULT 2
         )
     ''')
     
-    # Insertar Administrador por defecto con clave segura
+    # Migraciones para agregar columnas si la tabla ya existía
+    columnas_nuevas = [
+        ("tipo_corte", "TEXT DEFAULT 'Quincenal'"),
+        ("tipo_turno", "TEXT DEFAULT 'Diurno (8h)'"),
+        ("marcas_diarias", "INTEGER DEFAULT 2")
+    ]
+    for col, decl in columnas_nuevas:
+        try:
+            cursor.execute(f"ALTER TABLE empleados ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass # La columna ya existe
+
     cursor.execute('''
-        INSERT OR IGNORE INTO empleados (email, nombre, password, lat_sucursal, lon_sucursal, nombre_sucursal, rol)
-        VALUES ('admin@empresa.com', 'Administrador', 'admin123', 9.850015, -83.904938, 'Sede OSARE', 'Admin')
+        INSERT OR IGNORE INTO empleados (email, nombre, password, lat_sucursal, lon_sucursal, nombre_sucursal, rol, tipo_corte, tipo_turno, marcas_diarias)
+        VALUES ('admin@empresa.com', 'Administrador', 'admin123', 9.850015, -83.904938, 'Sede OSARE', 'Admin', 'Quincenal', 'Diurno (8h)', 2)
     ''')
     
     # 3. Tabla de Asistencia
@@ -63,4 +76,4 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-    print("✅ Base de datos inicializada correctamente.")
+    print("✅ Base de datos inicializada correctamente con campos de planilla y turnos.")
