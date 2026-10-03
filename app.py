@@ -143,41 +143,41 @@ st.markdown("""
         color: #0F172A !important;
     }
 
-    /* 6. CONTROL GLOBAL DE TAMAÑO DE FUENTE (PERSONALIZABLE) */
+    /* 6. CONTROL GLOBAL DE TAMAÑO DE FUENTE */
     html, body, .stApp {
-        font-size: 23px !important; /* Tamaño base de lectura */
+        font-size: 23px !important;
     }
 
     h1, [data-testid="stHeader"] h1 {
-        font-size: 2.2rem !important; /* Títulos (st.title) */
+        font-size: 2.2rem !important;
     }
 
     h2 {
-        font-size: 1.6rem !important; /* Subtítulos (st.header) */
+        font-size: 1.6rem !important;
     }
 
     h3 {
-        font-size: 1.4rem !important; /* Subsecciones (st.subheader) */
+        font-size: 1.4rem !important;
     }
 
     input, select, textarea, div[data-baseweb="select"] span {
-        font-size: 18px !important; /* Texto dentro de inputs y selects */
+        font-size: 18px !important;
     }
 
     label, [data-testid="stWidgetLabel"] p {
-        font-size: 18px !important; /* Etiquetas encima de los inputs */
+        font-size: 18px !important;
     }
 
     [data-testid="stDataFrame"], div[role="grid"] * {
-        font-size: 18px !important; /* Texto interno de tablas y dataframes */
+        font-size: 18px !important;
     }
 
     div[data-testid="stTabs"] button[data-baseweb="tab"] * {
-        font-size: 18px !important; /* Texto de las pestañas */
+        font-size: 18px !important;
     }
 
     div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
-        font-size: 18px !important; /* Texto de botones */
+        font-size: 18px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -385,38 +385,55 @@ elif seccion == "📊 Dashboard y Planillas":
                 dentro_m = len(df_asistencia[df_asistencia["valido_gps"] == 1])
                 st.metric("Dentro de Zona", f"{dentro_m} ({(dentro_m/len(df_asistencia))*100:.0f}%)")
 
+            st.divider()
+            
+            # --- FILTRO POR EMPLEADO PARA EL MAPA Y GRÁFICOS ---
+            lista_empleados = ["Todos los Empleados"] + sorted(df_asistencia["nombre"].unique().tolist())
+            emp_filtro = st.selectbox("👤 Filtrar visualización por empleado:", lista_empleados)
+
+            # Filtrar Dataframe según selección
+            if emp_filtro != "Todos los Empleados":
+                df_mapa = df_asistencia[df_asistencia["nombre"] == emp_filtro]
+            else:
+                df_mapa = df_asistencia
+
             col1, col2 = st.columns([1, 1])
             with col1:
                 st.subheader("Cumplimiento de Zona")
-                st.bar_chart(df_asistencia["Estado Zona"].value_counts())
+                st.bar_chart(df_mapa["Estado Zona"].value_counts())
                 
             with col2:
-                st.subheader("Geolocalización")
-                lat_centro = df_asistencia["latitud"].mean()
-                lon_centro = df_asistencia["longitud"].mean()
-                
-                m_audit = folium.Map(location=[lat_centro, lon_centro], zoom_start=13, scrollWheelZoom=False)
-                for _, row in df_asistencia.iterrows():
-                    color_punto = "#0284C7" if row["valido_gps"] == 1 else "#DC2626"
-                    folium.CircleMarker(
-                        location=[row["latitud"], row["longitud"]],
-                        radius=7,
-                        color=color_punto,
-                        fill=True,
-                        fill_color=color_punto,
-                        popup=f"{row['nombre']} - {row['tipo']}"
-                    ).add_to(m_audit)
-                st_folium(m_audit, height=280, width="100%", key="mapa_audit")
+                st.subheader(f"Geolocalización ({len(df_mapa)} marcas)")
+                if not df_mapa.empty:
+                    lat_centro = df_mapa["latitud"].mean()
+                    lon_centro = df_mapa["longitud"].mean()
+                    
+                    m_audit = folium.Map(location=[lat_centro, lon_centro], zoom_start=14, scrollWheelZoom=False)
+                    for _, row in df_mapa.iterrows():
+                        color_punto = "#0284C7" if row["valido_gps"] == 1 else "#DC2626"
+                        folium.CircleMarker(
+                            location=[row["latitud"], row["longitud"]],
+                            radius=7,
+                            color=color_punto,
+                            fill=True,
+                            fill_color=color_punto,
+                            popup=f"{row['nombre']} - {row['tipo']} ({row['fecha_hora']})"
+                        ).add_to(m_audit)
+                    st_folium(m_audit, height=280, width="100%", key="mapa_audit")
+                else:
+                    st.info("El empleado seleccionado no tiene marcas registradas.")
                 
             st.subheader("Registro General")
-            st.dataframe(df_asistencia[["id", "nombre", "fecha_hora", "tipo", "Estado Zona"]], width="stretch")
+            st.dataframe(df_mapa[["id", "nombre", "fecha_hora", "tipo", "Estado Zona"]], width="stretch")
             
             st.divider()
             st.subheader("📸 Ver Fotografía de Fichaje")
-            id_sel = st.selectbox("Selecciona ID de Marcación:", df_asistencia["id"].tolist())
-            row_foto = df_asistencia[df_asistencia["id"] == id_sel].iloc[0]
-            if row_foto["foto_path"] and os.path.exists(row_foto["foto_path"]):
-                st.image(row_foto["foto_path"], caption=f"Foto de {row_foto['nombre']} ({row_foto['fecha_hora']})", width=320)
+            id_sel = st.selectbox("Selecciona ID de Marcación:", df_mapa["id"].tolist() if not df_mapa.empty else df_asistencia["id"].tolist())
+            
+            if id_sel:
+                row_foto = df_asistencia[df_asistencia["id"] == id_sel].iloc[0]
+                if row_foto["foto_path"] and os.path.exists(row_foto["foto_path"]):
+                    st.image(row_foto["foto_path"], caption=f"Foto de {row_foto['nombre']} ({row_foto['fecha_hora']})", width=320)
         else:
             st.info("No hay registros de asistencia.")
 
